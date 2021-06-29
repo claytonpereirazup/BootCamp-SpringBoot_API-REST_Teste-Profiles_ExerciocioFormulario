@@ -1,0 +1,91 @@
+package br.com.zup.avaliacao.controller;
+
+import java.util.Optional;
+
+import javax.transaction.Transactional;
+import javax.validation.Valid;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort.Direction;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.util.UriComponentsBuilder;
+
+import br.com.zup.avaliacao.controller.dto.AlunoDto;
+import br.com.zup.avaliacao.controller.dto.AlunoDtoDetalhe;
+import br.com.zup.avaliacao.controller.form.AlunoForm;
+import br.com.zup.avaliacao.modelo.Aluno;
+import br.com.zup.avaliacao.repository.AlunoRepository;
+
+@RestController
+@RequestMapping("/alunos")
+public class AlunoController {
+	
+	@Autowired
+	private AlunoRepository alunoRepository;
+	
+//	@GetMapping
+//	public List<AlunoDto> listar() {
+//	//lista em memória
+//	//Aluno aluno = new Aluno(1L, "Clayton Pereira", 48, "clayton.pereira@zup.com.br");
+//	//return aluno;
+//		
+//	List<Aluno> alunos = alunoRepository.findAll();
+//	return Aluno.converteEntidadeParaDto(alunos);
+//	}
+	
+//	@GetMapping
+//	public Page<AlunoDto> listar(@RequestParam int pagina, @RequestParam int qtdRegistro, @RequestParam String ordenacao) {
+//	//lista em memória
+//	//Aluno aluno = new Aluno(1L, "Clayton Pereira", 48, "clayton.pereira@zup.com.br");
+//	//return aluno;
+//		
+//	Pageable paginacao = PageRequest.of(pagina, qtdRegistro, Direction.DESC ,ordenacao);
+//		
+//	Page<Aluno> alunos = alunoRepository.findAll(paginacao);
+//	return Aluno.converteEntidadeParaDto(alunos);
+//	}
+	
+	@GetMapping
+	@Cacheable(value = "listaDeAlunos")
+	public Page<AlunoDto> listar(@PageableDefault(sort="id", direction=Direction.ASC,page = 0, size = 10) Pageable paginacao) {
+	//lista em memória
+	//Aluno aluno = new Aluno(1L, "Clayton Pereira", 48, "clayton.pereira@zup.com.br");
+	//return aluno;
+		
+	Page<Aluno> alunos = alunoRepository.findAll(paginacao);
+	return Aluno.converteEntidadeParaDto(alunos);
+	}
+	
+	@GetMapping("/{id}")
+	public ResponseEntity<AlunoDtoDetalhe> listarPorId(@PathVariable Long id) {
+	Optional<Aluno> obj = alunoRepository.findById(id);
+		if(obj.isPresent()) {
+			//Aluno aluno = obj.get();
+			return ResponseEntity.ok(new AlunoDtoDetalhe(obj.get()));
+		}
+	return ResponseEntity.badRequest().build();
+	}
+	
+	@PostMapping
+	@Transactional
+	@CacheEvict(value = "listaDeAlunos", allEntries = true)
+	public ResponseEntity<AlunoDto> cadastrar(@RequestBody @Valid AlunoForm form, UriComponentsBuilder uriBuilder) {
+		Aluno aluno = form.converteFomParaEntidade(form);
+		alunoRepository.save(aluno);
+			//URI uri = uriBuilder.path("/alunos/{id}").buildAndExpand(aluno.getId()).toUri();
+			//return ResponseEntity(uri).body(new AlunoDto(aluno));
+	return ResponseEntity.ok().build();
+	}
+
+}
